@@ -6,27 +6,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# from dotenv import load_dotenv
-# from openai import OpenAI
-
-# load_dotenv()
-
-# client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# def generate_response(prompt):
-#     response = client.chat.completions.create(
-#         model="gpt-4o-mini",
-#         messages=[{"role": "user", "content": prompt}]
-#     )
-#     return response.choices[0].message["content"]
-
-# st.title("My Chatbot")
-
-# user_input = st.text_input("Ask me something")
-
-# if st.button("Send"):
-#     st.write(generate_response(user_input))
-
 
 # ---------- PATHS ----------
 ROOT = Path(__file__).resolve().parents[1]   # .. /final
