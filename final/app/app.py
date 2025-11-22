@@ -6,6 +6,50 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import os
+from openai import OpenAI
+
+def summarize_reviews(reviews):
+    api_key = os.getenv("LITELLM_TOKEN")
+    if not api_key:
+        raise ValueError("LITELLM_TOKEN not found. Please set it first.")
+
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://litellm.oit.duke.edu/v1"
+    )
+
+    prompt = (
+        "I collected some reviews of a place I was considering visiting. "
+        "Can you summarize the reviews for me? I want to generally know what people like and dislike. "
+        "The reviews are below:\n"
+    )
+    for review in reviews:
+        prompt += f"\n- {review}"
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that summarizes reviews."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
+            max_tokens=300
+        )
+
+     
+        if hasattr(response, "choices") and len(response.choices) > 0:
+            return response.choices[0].message.content
+        else:
+            print("⚠️ No valid choices found in response:")
+            print(response)
+            return "Error: Model returned no output."
+
+    except Exception as e:
+        print("Something went wrong while summarizing:")
+        print(e)
+        return "Error: Failed to get summary."
 
 # ---------- PATHS ----------
 ROOT = Path(__file__).resolve().parents[1]   # .. /final
@@ -195,3 +239,56 @@ elif page == "Raw Data":
 
 
 # chatbot
+elif page == "Chatbot":
+    st.subheader("Chat with the Dashboard Assistant")
+
+    tabs = st.tabs(["General Chat", "Summarize Reviews"])
+
+    # ------------- TAB 1: General Chat -------------
+    with tabs[0]:
+        st.write("Ask any question about the dashboard, dataset, or insights.")
+
+        if "chat_messages" not in st.session_state:
+            st.session_state.chat_messages = [
+                {"role": "assistant", "content": "Hi! How can I help you today?"}
+            ]
+
+        # Show chat history
+        for msg in st.session_state.chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        # Chat input
+        user_input = st.chat_input("Type your message here...")
+
+        if user_input:
+            # Log user message
+            st.session_state.chat_messages.append({"role": "user", "content": user_input})
+            
+            with st.chat_message("user"):
+                st.markdown(user_input)
+
+            # Call your LLM (ask_llm)
+            with st.chat_message("assistant"):
+                reply = summarize_reviews([user_input])  # temporarily reuse your LLM function
+                st.markdown(reply)
+
+            st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+
+    # ------------- TAB 2: Summarize Reviews -------------
+    with tabs[1]:
+        st.write("Paste multiple reviews below, one per line, and get a summary.")
+
+        review_text = st.text_area("Enter reviews here:", height=200)
+
+        if st.button("Summarize Reviews"):
+            if review_text.strip() == "":
+                st.warning("Please enter at least one review.")
+            else:
+                reviews = [r.strip() for r in review_text.split("\n") if r.strip()]
+
+                with st.spinner("Summarizing reviews..."):
+                    summary = summarize_reviews(reviews)
+
+                st.success("Summary:")
+                st.write(summary)
