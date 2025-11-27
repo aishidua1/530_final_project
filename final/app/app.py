@@ -8,8 +8,12 @@ import matplotlib.pyplot as plt
 
 import os
 from openai import OpenAI
+from dotenv import load_dotenv
 
-def summarize_reviews(reviews):
+# Load environment variables from .env file
+load_dotenv()
+
+def ask_social_media_mental_health_bot(question: str) -> str:
     api_key = os.getenv("LITELLM_TOKEN")
     if not api_key:
         raise ValueError("LITELLM_TOKEN not found. Please set it first.")
@@ -19,37 +23,40 @@ def summarize_reviews(reviews):
         base_url="https://litellm.oit.duke.edu/v1"
     )
 
-    prompt = (
-        "I collected some reviews of a place I was considering visiting. "
-        "Can you summarize the reviews for me? I want to generally know what people like and dislike. "
-        "The reviews are below:\n"
+    user_prompt = (
+        "The user has a question about mental health and social media use.\n"
+        "Give a clear, concise, evidence-informed answer that a college student "
+        "could understand.\n"
+        "Be supportive but NOT therapeutic: do not diagnose or give medical advice.\n"
+        "If the question sounds like the user might be in crisis, gently suggest "
+        "contacting campus counseling or emergency services.\n\n"
+        f"Question: {question}"
     )
-    for review in reviews:
-        prompt += f"\n- {review}"
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model="GPT 4.1 Mini",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that summarizes reviews."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a supportive, non-clinical assistant who talks "
+                        "about how social media impacts mental health using "
+                        "balanced, research-informed information."
+                    ),
+                },
+                {"role": "user", "content": user_prompt},
             ],
-            temperature=0.4,
-            max_tokens=300
+            temperature=0.5,
+            max_tokens=400,
         )
 
-     
-        if hasattr(response, "choices") and len(response.choices) > 0:
-            return response.choices[0].message.content
+        if hasattr(response, "choices") and response.choices:
+            return response.choices[0].message.content.strip()
         else:
-            print("⚠️ No valid choices found in response:")
-            print(response)
-            return "Error: Model returned no output."
-
+            return "Sorry, I couldn't generate a response."
     except Exception as e:
-        print("Something went wrong while summarizing:")
-        print(e)
-        return "Error: Failed to get summary."
+        return f"Error: {str(e)}"
 
 # ---------- PATHS ----------
 ROOT = Path(__file__).resolve().parents[1]   # .. /final
@@ -240,55 +247,72 @@ elif page == "Raw Data":
 
 # chatbot
 elif page == "Chatbot":
-    st.subheader("Chat with the Dashboard Assistant")
 
-    tabs = st.tabs(["General Chat", "Summarize Reviews"])
+    st.header("Mental Health & Social Media Q&A Bot")
 
-    # ------------- TAB 1: General Chat -------------
-    with tabs[0]:
-        st.write("Ask any question about the dashboard, dataset, or insights.")
+    # User input
+    user_question = st.text_input("Ask a question about mental health and social media:")
 
-        if "chat_messages" not in st.session_state:
-            st.session_state.chat_messages = [
-                {"role": "assistant", "content": "Hi! How can I help you today?"}
-            ]
-
-        # Show chat history
-        for msg in st.session_state.chat_messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-        # Chat input
-        user_input = st.chat_input("Type your message here...")
-
-        if user_input:
-            # Log user message
-            st.session_state.chat_messages.append({"role": "user", "content": user_input})
+    # When button is clicked
+    if st.button("Ask"):
+        if user_question.strip() == "":
+            st.warning("Please enter a question first.")
+        else:
+            with st.spinner("Thinking..."):
+                answer = ask_social_media_mental_health_bot(user_question)
             
-            with st.chat_message("user"):
-                st.markdown(user_input)
+            st.subheader("Answer")
+            st.write(answer)
 
-            # Call your LLM (ask_llm)
-            with st.chat_message("assistant"):
-                reply = summarize_reviews([user_input])  # temporarily reuse your LLM function
-                st.markdown(reply)
+    # st.subheader("Chat with the Dashboard Assistant")
 
-            st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+    # tabs = st.tabs(["General Chat"])
 
-    # ------------- TAB 2: Summarize Reviews -------------
-    with tabs[1]:
-        st.write("Paste multiple reviews below, one per line, and get a summary.")
+    # # ------------- TAB 1: General Chat -------------
+    # with tabs[0]:
+    #     st.write("Ask any question about the dashboard, dataset, or insights.")
 
-        review_text = st.text_area("Enter reviews here:", height=200)
+    #     if "chat_messages" not in st.session_state:
+    #         st.session_state.chat_messages = [
+    #             {"role": "assistant", "content": "Hi! How can I help you today?"}
+    #         ]
 
-        if st.button("Summarize Reviews"):
-            if review_text.strip() == "":
-                st.warning("Please enter at least one review.")
-            else:
-                reviews = [r.strip() for r in review_text.split("\n") if r.strip()]
+    #     # Show chat history
+    #     for msg in st.session_state.chat_messages:
+    #         with st.chat_message(msg["role"]):
+    #             st.markdown(msg["content"])
 
-                with st.spinner("Summarizing reviews..."):
-                    summary = summarize_reviews(reviews)
+    #     # Chat input
+    #     user_input = st.chat_input("Type your message here...")
 
-                st.success("Summary:")
-                st.write(summary)
+    #     if user_input:
+    #         # Log user message
+    #         st.session_state.chat_messages.append({"role": "user", "content": user_input})
+            
+    #         with st.chat_message("user"):
+    #             st.markdown(user_input)
+
+    #         # Call your LLM (ask_llm)
+    #         with st.chat_message("assistant"):
+    #             reply = summarize_reviews([user_input])  # temporarily reuse your LLM function
+    #             st.markdown(reply)
+
+    #         st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+
+    # # ------------- TAB 2: Summarize Reviews -------------
+    # with tabs[1]:
+    #     st.write("Paste multiple reviews below, one per line, and get a summary.")
+
+    #     review_text = st.text_area("Enter reviews here:", height=200)
+
+    #     if st.button("Summarize Reviews"):
+    #         if review_text.strip() == "":
+    #             st.warning("Please enter at least one review.")
+    #         else:
+    #             reviews = [r.strip() for r in review_text.split("\n") if r.strip()]
+
+    #             with st.spinner("Summarizing reviews..."):
+    #                 summary = summarize_reviews(reviews)
+
+    #             st.success("Summary:")
+    #             st.write(summary)
