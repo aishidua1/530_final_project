@@ -1,4 +1,3 @@
-# where i would put streamlit app
 from pathlib import Path
 import os
 
@@ -6,23 +5,32 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# ----------------- ENV SETUP -----------------
 load_dotenv()
 
-def ask_social_media_mental_health_bot(question: str) -> str:
+
+# ----------------- LLM HELPER -----------------
+def ask_social_media_mental_health_bot(
+    question: str,
+    personalization_text: str | None = None,
+) -> str:
+    """
+    Ask the mental health & social media bot a question.
+    If personalization_text is provided, it will be included as context.
+    """
     api_key = os.getenv("LITELLM_TOKEN")
     if not api_key:
         raise ValueError("LITELLM_TOKEN not found. Please set it first.")
 
     client = OpenAI(
         api_key=api_key,
-        base_url="https://litellm.oit.duke.edu/v1"
+        base_url="https://litellm.oit.duke.edu/v1",
     )
 
+    # Base user prompt
     user_prompt = (
         "The user has a question about mental health and social media use.\n"
         "Give a clear, concise, evidence-informed answer that a college student "
@@ -30,8 +38,18 @@ def ask_social_media_mental_health_bot(question: str) -> str:
         "Be supportive but NOT therapeutic: do not diagnose or give medical advice.\n"
         "If the question sounds like the user might be in crisis, gently suggest "
         "contacting campus counseling or emergency services.\n\n"
-        f"Question: {question}"
     )
+
+    # Add personalization if available
+    if personalization_text:
+        user_prompt += (
+            "Here is some additional context about the user's recent screen time. "
+            "Use this to make your answer more concrete and personalized, but do NOT "
+            "assume any diagnosis.\n\n"
+            f"{personalization_text}\n\n"
+        )
+
+    user_prompt += f"Question: {question}"
 
     try:
         response = client.chat.completions.create(
@@ -58,48 +76,52 @@ def ask_social_media_mental_health_bot(question: str) -> str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-# ---------- PATHS ----------
+
+# ----------------- PATHS & DATA -----------------
 ROOT = Path(__file__).resolve().parents[1]   # .. /final
-DATA_PATH = ROOT / "data" / "student_social_media.csv"  # <-- change name if needed
+DATA_PATH = ROOT / "data" / "student_social_media.csv"
 IMG_DIR = ROOT / "imgs"
 
-# ---------- DATA LOADING ----------
+
 @st.cache_data
 def load_data(path: Path) -> pd.DataFrame:
     if path.suffix.lower() == ".csv":
         return pd.read_csv(path)
     else:
-        # handles .xlsx, .xls
         return pd.read_excel(path)
+
 
 df = load_data(DATA_PATH)
 
-# ---------- PAGE CONFIG ----------
+
+# ----------------- PAGE CONFIG -----------------
 st.set_page_config(
     page_title="Student Social Media & Well-Being",
-    layout="wide"
+    layout="wide",
 )
 
 st.title("Student Social Media & Well-Being Dashboard")
 st.write(
     """
     This dashboard explores relationships between **social media use**, **sleep**, and
-    **mental health** in a student sample.  
-    Use the sidebar to navigate through different views.
+    **mental health** in a student sample.
+
+    On the **Home** page, you can:
+    - Ask a **Q&A bot** about social media and mental health  
+    - Enter your own **screen time patterns** to get more personalized insights  
+    - Explore **pre-made visualizations** and summary statistics
     """
 )
 
-# ---------- SIDEBAR ----------
+
+# ----------------- SIDEBAR -----------------
 with st.sidebar:
     st.header("Navigation")
     page = st.radio(
         "Go to",
-        ["Overview", "Pre-made Visualizations", "Build Your Own Plot", "Raw Data", "Chatbot"],
+        ["Home", "Build Your Own Plot", "Raw Data"],
     )
 
-    st.markdown("---")
-    st.subheader("Filter data (optional)")
-    # Generic example: filter by a column if it exists
     if "cluster" in df.columns:
         selected_clusters = st.multiselect(
             "Cluster", options=sorted(df["cluster"].dropna().unique())
@@ -107,91 +129,265 @@ with st.sidebar:
         if selected_clusters:
             df = df[df["cluster"].isin(selected_clusters)]
 
-# ---------- PAGE 1: OVERVIEW ----------
-if page == "Overview":
-    st.subheader("Dataset Summary")
 
-    col1, col2, col3 = st.columns(3)
+# ----------------- HOME: BOT + PRE-MADE VISUALS -----------------
+if page == "Home":
+    tab_bot, tab_viz = st.tabs(["Q&A Assistant", "Data & Visualizations"])
 
-    # Number of students
-    col1.metric("Number of students", len(df))
+    # ---- TAB 1: BOT + MANUAL SCREEN TIME INPUT ----
+    with tab_bot:
+        st.header("Mental Health & Social Media Q&A Bot")
 
-    numeric_cols = df.select_dtypes("number").columns
+        st.markdown(
+            """
+            Ask a question about how social media, screen time, sleep, or online habits
+            might relate to your mental health.  
+            This assistant is **informational**, not clinical — it won't diagnose or
+            replace professional care.
+            """
+        )
 
-    if len(numeric_cols) > 0:
-        # Simple overall mean of first numeric column, just as an example
-        first_col = numeric_cols[0]
-        col2.metric(f"Mean of {first_col}", f"{df[first_col].mean():.2f}")
+        st.markdown("#### See it in motion! Describe your typical screen time")
 
-        col3.metric("Number of numeric variables", len(numeric_cols))
+        st.write(
+            """
+            You can enter your **average daily screen time** below.  
+            These numbers don’t need to be perfect — rough estimates are fine.
+            The app will summarize them and use that context to personalize the answer.
+            """
+        )
 
-    st.markdown("### Quick stats (numeric columns)")
-    st.dataframe(df.describe().T)
+        col_a, col_b = st.columns(2)
+        with col_a:
+            total_screen_minutes = st.number_input(
+                "Average total screen time per day (minutes)",
+                min_value=0,
+                max_value=1440,
+                value=0,
+                step=10,
+            )
+        with col_b:
+            social_media_minutes = st.number_input(
+                "Average social media time per day (minutes)",
+                min_value=0,
+                max_value=1440,
+                value=0,
+                step=10,
+            )
 
-    st.markdown("### Key Figures (Saved Images)")
-    img_cols = st.columns(2)
+        days_pattern = st.number_input(
+            "Roughly how many recent days does this pattern reflect?",
+            min_value=1,
+            max_value=365,
+            value=7,
+            step=1,
+        )
 
-    # Safely show images if they exist
-    pre_made_imgs = [
-        ("box_plot_social", "Distribution of social media use"),
-        ("daily_smu_sleep", "Daily social media use vs. sleep"),
-        ("mh_score_by_c", "Mental health score by group / cluster"),
-        ("kmeans_cluster", "K-means clusters"),
-        ("detailed_smu_s", "Detailed social media & sleep breakdown"),
-    ]
+        personalization_summary = None
+        summary_parts = []
 
-    for i, (stem, caption) in enumerate(pre_made_imgs):
-        img_path = next(IMG_DIR.glob(f"{stem}*"), None)
-        if img_path is not None:
-            with img_cols[i % 2]:
-                st.image(str(img_path), use_container_width=True, caption=caption)
+        if total_screen_minutes > 0:
+            summary_parts.append(
+                f"- Average total screen time: **{total_screen_minutes:.1f} minutes/day**"
+            )
+        if social_media_minutes > 0:
+            summary_parts.append(
+                f"- Average social media time: **{social_media_minutes:.1f} minutes/day**"
+            )
 
-# ---------- PAGE 2: PRE-MADE VISUALIZATIONS ----------
-elif page == "Pre-made Visualizations":
-    st.subheader("Pre-made Visualizations (from your analysis)")
+        if summary_parts:
+            summary_parts.append(
+                f"- User reports this pattern over roughly **{days_pattern} days**"
+            )
 
-    # Show images one by one with explanation text placeholders
-    def show_image(stem: str, title: str, explanation: str):
-        img_path = next(IMG_DIR.glob(f"{stem}*"), None)
-        if img_path is not None:
-            st.markdown(f"#### {title}")
-            st.image(str(img_path), use_container_width=True)
-            st.write(explanation)
-            st.markdown("---")
+            st.markdown("###### Summary of your screen time")
+            for line in summary_parts:
+                st.write(line)
 
-    show_image(
-        "box_plot_social",
-        "Social Media Use Distribution",
-        "This box plot shows how daily social media use varies across students "
-        "(median, spread, and potential outliers).",
+            personalization_summary = (
+                "User-reported screen time pattern:\n" + "\n".join(summary_parts)
+            )
+        else:
+            st.info(
+                "If you enter non-zero values for screen time, I’ll use them to personalize "
+                "the answer. You can also leave them at 0 and just ask a general question."
+            )
+
+        # Store in session so it’s available when the button is clicked
+        st.session_state["screen_time_summary"] = personalization_summary
+
+        st.markdown("#### Ask your question")
+        user_question = st.text_area(
+            "Type your question here:",
+            placeholder="Example: How might using TikTok late at night affect my sleep and mood?",
+            height=100,
+        )
+
+        if st.button("Ask", key="ask_bot_button"):
+            if user_question.strip() == "":
+                st.warning("Please enter a question first.")
+            else:
+                with st.spinner("Thinking..."):
+                    answer = ask_social_media_mental_health_bot(
+                        user_question,
+                        personalization_text=st.session_state.get("screen_time_summary"),
+                    )
+
+                st.subheader("Answer")
+                st.write(answer)
+
+    # ---- TAB 2: PRE-MADE VISUALIZATIONS + EXPLANATIONS ----
+    with tab_viz:
+        st.subheader("Dataset Summary & Pre-made Visualizations")
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Number of students", len(df))
+
+        numeric_cols = df.select_dtypes("number").columns
+        if len(numeric_cols) > 0:
+            first_col = numeric_cols[0]
+            col2.metric(f"Mean of {first_col}", f"{df[first_col].mean():.2f}")
+            col3.metric("Number of numeric variables", len(numeric_cols))
+
+        st.markdown("### Quick stats (numeric columns)")
+        st.dataframe(df.describe().T)
+
+        st.markdown("---")
+
+        st.markdown(
+        """
+        ### Why The Following Visualizations Matter
+
+        These charts help reveal important patterns in how students use social media,
+        how much they sleep, and how these habits relate to well-being.  
+        
+        By examining trends in this dataset, you can:
+        - See **real behavior patterns** that may mirror your own digital habits  
+        - Identify **risk signals**, such as high social media use paired with short sleep  
+        - Compare your personal screen-time inputs to broader trends  
+        - Better understand how digital routines can influence **stress, mood, and overall wellness**  
+
+        These visuals provide valuable context when interpreting your own habits and
+        when asking questions in the Q&A Assistant. They are not diagnostic, but they
+        help illustrate how certain technology patterns may support—or strain—mental health.
+        """
     )
 
-    show_image(
-        "daily_smu_sleep",
-        "Daily Social Media Use vs. Sleep",
-        "This figure visualizes the relationship between hours of social media and sleep.",
-    )
 
-    show_image(
-        "mh_score_by_c",
-        "Mental Health by Group / Cluster",
-        "This visualization compares mental health scores across different groups or clusters.",
-    )
 
-    show_image(
-        "kmeans_cluster",
-        "K-means Clusters",
-        "The cluster plot groups students based on similar patterns in variables such as "
-        "social media use, sleep, and mental health.",
-    )
+        st.markdown("---")
+        st.markdown("### Visualizations and Insights")
 
-    show_image(
-        "detailed_smu_s",
-        "Detailed Social Media & Sleep Patterns",
-        "A more granular breakdown of how social media use aligns with sleep behavior.",
-    )
+        def show_image_with_insights(stem: str, title: str, insight_text: str):
+            img_path = next(IMG_DIR.glob(f"{stem}*"), None)
+            if img_path is not None:
+                st.markdown(f"#### {title}")
+                st.image(str(img_path), use_container_width=True)
+                st.markdown(insight_text)
+                st.markdown("---")
 
-# ---------- PAGE 3: BUILD YOUR OWN PLOT ----------
+        show_image_with_insights(
+            "box_plot_social",
+            "Social Media Use Distribution",
+            """
+            **What this shows:**  
+            This box plot summarizes how much time students spend on social media per day.  
+
+            **How to read it:**  
+            - The **median line** shows a typical daily usage.  
+            - The **box height** reflects how spread out students' usage is.  
+            - Any **points far above the box** are very heavy users.  
+
+            **Why it matters:**  
+            A wide spread or many outliers suggests that some students may be using social
+            media at levels that could compete with sleep, studying, or offline activities.
+            """,
+        )
+
+        show_image_with_insights(
+            "daily_smu_sleep",
+            "Daily Social Media Use vs. Sleep",
+            """
+            **What this shows:**  
+            This figure compares hours of social media use with hours of sleep.  
+
+            **Key ideas to look for:**  
+            - If the trend slopes **downwards**, higher social media use might be linked
+              to **less sleep**.  
+            - Clusters of points in the “high social media / low sleep” area can hint at
+              potentially risky patterns.  
+
+            **Why it matters:**  
+            Sleep is tightly connected to mood and concentration. When social media starts
+            cutting into sleep, students may feel more tired, stressed, or emotionally
+            reactive during the day.
+            """,
+        )
+
+        show_image_with_insights(
+            "mh_score_by_c",
+            "Mental Health Score by Group / Cluster",
+            """
+            **What this shows:**  
+            Students are grouped into clusters based on their behavior (e.g., social media,
+            sleep, possibly other variables). Each bar reflects the average mental health
+            score in that cluster.  
+
+            **How to interpret it:**  
+            - Clusters with **higher mental health scores** may represent healthier
+              patterns of tech use and sleep.  
+            - Clusters with **lower scores** might combine heavier late-night use,
+              less sleep, or other stressors.  
+
+            **Why it matters:**  
+            Seeing these groups side by side helps illustrate that it's not just *how much*
+            you use social media, but **how it fits into your day** that matters.
+            """,
+        )
+
+        show_image_with_insights(
+            "kmeans_cluster",
+            "K-means Clusters of Students",
+            """
+            **What this shows:**  
+            Each point represents a student, and colors show clusters of students with
+            similar patterns across multiple variables (e.g., social media use, sleep,
+            mental health scores).  
+
+            **What to look for:**  
+            - Are there clusters with **high social media + low sleep**?  
+            - Are there clusters with **moderate use + good sleep** and better mental
+              health scores?  
+
+            **Why it matters:**  
+            Clusters highlight that there’s more than one “type” of student tech behavior.
+            Some patterns appear more protective while others may be more risky for mood
+            and stress.
+            """,
+        )
+
+        show_image_with_insights(
+            "detailed_smu_s",
+            "Detailed Social Media & Sleep Patterns",
+            """
+            **What this shows:**  
+            A more granular breakdown of how different slices of social media behavior
+            (e.g., evening use, total hours) align with sleep duration or quality.  
+
+            **How to use it:**  
+            - Focus on where **late-night social media** overlaps with shorter sleep.  
+            - Look for any thresholds (e.g., past a certain number of hours, sleep
+              tends to drop).  
+
+            **Why it matters:**  
+            Small changes, like moving heavy social media use earlier in the day or
+            setting a “digital bedtime,” may help protect sleep and, indirectly,
+            mental health.
+            """,
+        )
+
+
+# ----------------- PAGE: BUILD YOUR OWN PLOT -----------------
 elif page == "Build Your Own Plot":
     st.subheader("Explore the Data Interactively")
 
@@ -223,7 +419,11 @@ elif page == "Build Your Own Plot":
         with tab2:
             st.markdown("#### Scatterplot")
             x_var = st.selectbox("X-axis", numeric_cols, index=0)
-            y_var = st.selectbox("Y-axis", numeric_cols, index=min(1, len(numeric_cols)-1))
+            y_var = st.selectbox(
+                "Y-axis",
+                numeric_cols,
+                index=min(1, len(numeric_cols) - 1),
+            )
 
             fig2, ax2 = plt.subplots()
             ax2.scatter(df[x_var], df[y_var], alpha=0.6)
@@ -232,7 +432,8 @@ elif page == "Build Your Own Plot":
             ax2.set_title(f"{y_var} vs. {x_var}")
             st.pyplot(fig2)
 
-# ---------- PAGE 4: RAW DATA ----------
+
+# ----------------- PAGE: RAW DATA -----------------
 elif page == "Raw Data":
     st.subheader("Raw Data")
     st.dataframe(df)
@@ -243,76 +444,3 @@ elif page == "Raw Data":
         file_name="student_social_media_sleep_filtered.csv",
         mime="text/csv",
     )
-
-
-# chatbot
-elif page == "Chatbot":
-
-    st.header("Mental Health & Social Media Q&A Bot")
-
-    # User input
-    user_question = st.text_input("Ask a question about mental health and social media:")
-
-    # When button is clicked
-    if st.button("Ask"):
-        if user_question.strip() == "":
-            st.warning("Please enter a question first.")
-        else:
-            with st.spinner("Thinking..."):
-                answer = ask_social_media_mental_health_bot(user_question)
-            
-            st.subheader("Answer")
-            st.write(answer)
-
-    # st.subheader("Chat with the Dashboard Assistant")
-
-    # tabs = st.tabs(["General Chat"])
-
-    # # ------------- TAB 1: General Chat -------------
-    # with tabs[0]:
-    #     st.write("Ask any question about the dashboard, dataset, or insights.")
-
-    #     if "chat_messages" not in st.session_state:
-    #         st.session_state.chat_messages = [
-    #             {"role": "assistant", "content": "Hi! How can I help you today?"}
-    #         ]
-
-    #     # Show chat history
-    #     for msg in st.session_state.chat_messages:
-    #         with st.chat_message(msg["role"]):
-    #             st.markdown(msg["content"])
-
-    #     # Chat input
-    #     user_input = st.chat_input("Type your message here...")
-
-    #     if user_input:
-    #         # Log user message
-    #         st.session_state.chat_messages.append({"role": "user", "content": user_input})
-            
-    #         with st.chat_message("user"):
-    #             st.markdown(user_input)
-
-    #         # Call your LLM (ask_llm)
-    #         with st.chat_message("assistant"):
-    #             reply = summarize_reviews([user_input])  # temporarily reuse your LLM function
-    #             st.markdown(reply)
-
-    #         st.session_state.chat_messages.append({"role": "assistant", "content": reply})
-
-    # # ------------- TAB 2: Summarize Reviews -------------
-    # with tabs[1]:
-    #     st.write("Paste multiple reviews below, one per line, and get a summary.")
-
-    #     review_text = st.text_area("Enter reviews here:", height=200)
-
-    #     if st.button("Summarize Reviews"):
-    #         if review_text.strip() == "":
-    #             st.warning("Please enter at least one review.")
-    #         else:
-    #             reviews = [r.strip() for r in review_text.split("\n") if r.strip()]
-
-    #             with st.spinner("Summarizing reviews..."):
-    #                 summary = summarize_reviews(reviews)
-
-    #             st.success("Summary:")
-    #             st.write(summary)
