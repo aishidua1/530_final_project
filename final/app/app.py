@@ -21,15 +21,14 @@ def ask_social_media_mental_health_bot(
     Ask the mental health & social media bot a question.
     If personalization_text is provided, it will be included as context.
     """
-    api_key = os.getenv("LITELLM_TOKEN")
+    api_key = os.getenv("LITELLM_TOKEN") or st.secrets.get("LITELLM_TOKEN")
+
     if not api_key:
-        raise ValueError("LITELLM_TOKEN not found. Please set it first.")
-
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://litellm.oit.duke.edu/v1",
-    )
-
+        raise ValueError(
+            "LITELLM_TOKEN not found. "
+            "Set it in your .env file locally or in Streamlit Cloud secrets."
+        )
+    
     # Base user prompt
     user_prompt = (
         "The user has a question about mental health and social media use.\n"
