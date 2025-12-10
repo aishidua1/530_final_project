@@ -247,7 +247,7 @@ st.markdown(
 
         /* ========================================================
        DARK MODE FIXES — OVERRIDE COLORS FOR BETTER CONTRAST
-       Applies ONLY when Streamlit's theme is set to dark.
+       Applies ONLY when Streamlit's theme is set to dark
        ======================================================== */
 
     @media (prefers-color-scheme: dark) {
@@ -398,7 +398,7 @@ if page == "Home":
             """
         )
 
-        st.markdown("#### Optional: Describe your typical screen time")
+        st.markdown("#### Lets see it in motion! Input your typical screen time")
 
         st.write(
             """
