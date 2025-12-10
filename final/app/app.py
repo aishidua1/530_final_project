@@ -110,184 +110,114 @@ st.markdown(
     """
     <style>
 
-    /* ===============================
-       GLOBAL APP BACKGROUND & TEXT
-       =============================== */
-    [data-testid="stAppViewContainer"] {
-        background: #eaf4fc; /* very light blue */
-        color: #1e293b;      /* deep slate blue for readability */
-    }
-
-    /* Sidebar background */
-    [data-testid="stSidebar"] {
-        background: #d9ecfa !important; /* soft powder blue */
-        color: #1e293b;
-    }
-
-    /* Headings */
-    h1, h2, h3, h4 {
-        color: #0f4c81 !important; /* academic navy-blue */
-        font-weight: 700 !important;
-    }
-
-    /* Body text */
-    p, span, li, label {
-        color: #1e293b !important;
-    }
-
-    /* Remove Streamlit default red text for warnings */
-    .stException, .stAlert {
-        background-color: #f0f7ff !important;  /* calm light-blue box */
-        color: #1e293b !important;
-        border-left: 4px solid #3b82f6 !important;
-    }
-
-    /* ===============================
-       INPUTS & TEXT AREA
-       =============================== */
-    textarea, input, select {
-        background-color: #ffffff !important;
-        color: #1e293b !important;
-        border-radius: 8px !important;
-        border: 1px solid #b6d7f7 !important;
-    }
-
-    /* Focus state for inputs */
-    textarea:focus, input:focus {
-        border: 1px solid #3b82f6 !important; /* bright blue */
-        box-shadow: 0 0 4px rgba(59,130,246,0.4) !important;
-    }
-
-    /* ===============================
-       BUTTONS
-       =============================== */
-    .stButton>button {
-        background: linear-gradient(90deg, #3b82f6, #60a5fa); /* bright blue → soft blue */
-        color: white !important;
-        border-radius: 999px;
-        border: none;
-        padding: 0.45rem 1.4rem;
-        font-weight: 600;
-        font-size: 0.95rem;
-    }
-    .stButton>button:hover {
-        filter: brightness(1.08);
-        cursor: pointer;
-    }
-
-    /* ===============================
-       TABS
-       =============================== */
-    button[data-baseweb="tab"] {
-        color: #475569 !important;        /* slate-blue text */
-        background-color: #eaf4fc !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        border-bottom: 3px solid #3b82f6 !important;
-        color: #0f4c81 !important;
-        font-weight: 700 !important;
-    }
-
-    /* ===============================
-       METRIC CARDS
-       =============================== */
-    [data-testid="stMetricValue"] {
-        color: #0f4c81 !important; /* navy blue */
-        font-weight: 700;
-    }
-    [data-testid="stMetricLabel"] {
-        color: #475569 !important; /* slate blue */
-    }
-
-    /* ===============================
-       DATAFRAMES
-       =============================== */
-    [data-testid="stDataFrame"] {
-        background-color: #ffffff !important;
-        border-radius: 10px;
-        border: 1px solid #b6d7f7 !important;
-    }
-
-    /* ===============================
-       SECTIONS / HR LINES
-       =============================== */
-    hr, .stDivider {
-        border-color: #b6d7f7 !important;
-    }
-
-    /* ---------------------------------------------------
-   FIX SIDEBAR RED/ORANGE RADIO BUTTON COLORS
-   --------------------------------------------------- */
-
-    /* Radio button dot (selected) */
-    div[role="radiogroup"] > label[data-testid="stRadio-option"] > div:first-child > div {
-        border: 2px solid #3b82f6 !important; /* blue border */
-    }
-
-    div[role="radiogroup"] > label[data-testid="stRadio-option"] > div:first-child > div[style*="background"] {
-        background-color: #3b82f6 !important; /* blue filled circle */
-    }
-
-    /* Radio button text */
-    label[data-testid="stRadio-option"] > div:nth-child(2) {
-        color: #0f4c81 !important; /* navy blue text */
-        font-weight: 600 !important;
-    }
-
-    /* Hover effect override */
-    label[data-testid="stRadio-option"]:hover {
-        background-color: #d9ecfa !important; /* light blue soft highlight */
-    }
-
-    /* Remove any orange/red from focus states */
-    label[data-testid="stRadio-option"]:focus {
-        outline: none !important;
-        box-shadow: 0 0 0 2px #93c5fd !important; /* soft light-blue ring */
-    }
-
-        /* ========================================================
-       DARK MODE FIXES — OVERRIDE COLORS FOR BETTER CONTRAST
-       Applies ONLY when Streamlit's theme is set to dark
-       ======================================================== */
-
-    @media (prefers-color-scheme: dark) {
-
-        /* Make st.info / st.warning / st.error boxes readable in dark mode */
-        .stAlert {
-            background-color: #0f172a !important;   /* dark navy background */
-            color: #e2e8f0 !important;              /* light text */
-            border-left: 4px solid #3b82f6 !important;  /* blue accent strip */
-        }
-
-        /* Ensure text inside the alert is also light */
-        .stAlert p,
-        .stAlert span,
-        .stAlert li,
-        .stAlert div {
-            color: #e2e8f0 !important;
-        }
-    }
+    /* ============================================================
+       LIGHT MODE — DEFAULT BLUE THEME
+       ============================================================ */
+    @media (prefers-color-scheme: light) {
 
         /* App background */
         [data-testid="stAppViewContainer"] {
-            background: #0b1221 !important;  /* deep navy */
-            color: #e2e8f0 !important;       /* light gray-blue text */
+            background: #eaf4fc !important;
+            color: #1e293b !important;
         }
 
-        /* Sidebar background */
+        /* Sidebar */
         [data-testid="stSidebar"] {
-            background: #0f172a !important; /* slate navy */
+            background: #d9ecfa !important;
+            color: #1e293b !important;
+        }
+
+        /* Headings */
+        h1, h2, h3, h4 {
+            color: #0f4c81 !important;
+            font-weight: 700 !important;
+        }
+
+        /* Body text */
+        p, span, li, label, div {
+            color: #1e293b !important;
+        }
+
+        /* Alerts */
+        .stAlert {
+            background-color: #f0f7ff !important;
+            color: #1e293b !important;
+            border-left: 4px solid #3b82f6 !important;
+        }
+
+        /* Inputs */
+        textarea, input, select {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+            border-radius: 8px !important;
+            border: 1px solid #b6d7f7 !important;
+        }
+
+        textarea:focus, input:focus {
+            border: 1px solid #3b82f6 !important;
+            box-shadow: 0 0 4px rgba(59,130,246,0.4) !important;
+        }
+
+        /* Buttons */
+        .stButton>button {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa) !important;
+            color: white !important;
+            border-radius: 999px !important;
+            border: none !important;
+            padding: 0.45rem 1.4rem !important;
+            font-weight: 600 !important;
+        }
+
+        /* Tabs */
+        button[data-baseweb="tab"] {
+            color: #475569 !important;
+            background-color: #eaf4fc !important;
+        }
+
+        button[data-baseweb="tab"][aria-selected="true"] {
+            border-bottom: 3px solid #3b82f6 !important;
+            color: #0f4c81 !important;
+        }
+
+        /* Metrics */
+        [data-testid="stMetricValue"] {
+            color: #0f4c81 !important;
+            font-weight: 700 !important;
+        }
+
+        [data-testid="stMetricLabel"] {
+            color: #475569 !important;
+        }
+    }
+
+
+
+    /* ============================================================
+       DARK MODE — HIGH CONTRAST BLUE THEME
+       ============================================================ */
+    @media (prefers-color-scheme: dark) {
+
+        /* App background */
+        [data-testid="stAppViewContainer"] {
+            background: #0b1221 !important;
+            color: #e2e8f0 !important;
+        }
+
+        /* Sidebar */
+        [data-testid="stSidebar"] {
+            background: #0f172a !important;
             color: #e2e8f0 !important;
         }
 
         /* Sidebar radio text */
         label[data-testid="stRadio-option"] > div:nth-child(2) {
-            color: #cbd5e1 !important;  /* readable light blue-gray */
+            color: #cbd5e1 !important;
         }
 
         /* Headings */
         h1, h2, h3, h4 {
-            color: #93c5fd !important;  /* soft bright blue */
+            color: #93c5fd !important;
+            font-weight: 700 !important;
         }
 
         /* Body text */
@@ -300,6 +230,7 @@ st.markdown(
             color: #bfdbfe !important;
             background-color: transparent !important;
         }
+
         button[data-baseweb="tab"][aria-selected="true"] {
             border-bottom: 3px solid #60a5fa !important;
             color: #e0f2fe !important;
@@ -307,8 +238,8 @@ st.markdown(
 
         /* Inputs */
         textarea, input, select {
-            background-color: #1e293b !important; /* dark slate */
-            color: #f1f5f9 !important;            /* light text */
+            background-color: #1e293b !important;
+            color: #f1f5f9 !important;
             border: 1px solid #475569 !important;
         }
 
@@ -330,15 +261,26 @@ st.markdown(
             border: 1px solid #334155 !important;
         }
 
+        /* Alerts readable in dark mode */
+        .stAlert {
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+            border-left: 4px solid #3b82f6 !important;
+        }
+
+        .stAlert p, .stAlert span, .stAlert li, .stAlert div {
+            color: #e2e8f0 !important;
+        }
+
         /* Metrics */
         [data-testid="stMetricValue"] {
             color: #93c5fd !important;
         }
+
         [data-testid="stMetricLabel"] {
             color: #bfdbfe !important;
         }
 
-        /* Divider */
         hr, .stDivider {
             border-color: #334155 !important;
         }
@@ -348,6 +290,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 
 # ----------------- TITLE & INTRO -----------------
 st.title("ScreenSense Lab")
