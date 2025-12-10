@@ -398,7 +398,7 @@ if page == "Home":
             """
         )
 
-        st.markdown("#### Lets see it in motion! Input your typical screen time")
+        st.markdown("#### Let's see it in motion! Input your typical screen time")
 
         st.write(
             """
