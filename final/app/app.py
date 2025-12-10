@@ -252,6 +252,22 @@ st.markdown(
 
     @media (prefers-color-scheme: dark) {
 
+        /* Make st.info / st.warning / st.error boxes readable in dark mode */
+        .stAlert {
+            background-color: #0f172a !important;   /* dark navy background */
+            color: #e2e8f0 !important;              /* light text */
+            border-left: 4px solid #3b82f6 !important;  /* blue accent strip */
+        }
+
+        /* Ensure text inside the alert is also light */
+        .stAlert p,
+        .stAlert span,
+        .stAlert li,
+        .stAlert div {
+            color: #e2e8f0 !important;
+        }
+    }
+
         /* App background */
         [data-testid="stAppViewContainer"] {
             background: #0b1221 !important;  /* deep navy */
