@@ -21,6 +21,7 @@ def ask_social_media_mental_health_bot(
     Ask the mental health & social media bot a question.
     If personalization_text is provided, it will be included as context.
     """
+    # Try env var first, then Streamlit secrets (for Streamlit Cloud)
     api_key = os.getenv("LITELLM_TOKEN") or st.secrets.get("LITELLM_TOKEN")
 
     if not api_key:
@@ -28,7 +29,12 @@ def ask_social_media_mental_health_bot(
             "LITELLM_TOKEN not found. "
             "Set it in your .env file locally or in Streamlit Cloud secrets."
         )
-    
+
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://litellm.oit.duke.edu/v1",
+    )
+
     # Base user prompt
     user_prompt = (
         "The user has a question about mental health and social media use.\n"
@@ -95,20 +101,250 @@ df = load_data(DATA_PATH)
 
 # ----------------- PAGE CONFIG -----------------
 st.set_page_config(
-    page_title="Student Social Media & Well-Being",
+    page_title="ScreenSense Lab: Social Media & Student Well-Being",
     layout="wide",
 )
 
-st.title("Student Social Media & Well-Being Dashboard")
+# ----------------- GLOBAL STYLING (BLUE THEME) -----------------
+st.markdown(
+    """
+    <style>
+
+    /* ===============================
+       GLOBAL APP BACKGROUND & TEXT
+       =============================== */
+    [data-testid="stAppViewContainer"] {
+        background: #eaf4fc; /* very light blue */
+        color: #1e293b;      /* deep slate blue for readability */
+    }
+
+    /* Sidebar background */
+    [data-testid="stSidebar"] {
+        background: #d9ecfa !important; /* soft powder blue */
+        color: #1e293b;
+    }
+
+    /* Headings */
+    h1, h2, h3, h4 {
+        color: #0f4c81 !important; /* academic navy-blue */
+        font-weight: 700 !important;
+    }
+
+    /* Body text */
+    p, span, li, label {
+        color: #1e293b !important;
+    }
+
+    /* Remove Streamlit default red text for warnings */
+    .stException, .stAlert {
+        background-color: #f0f7ff !important;  /* calm light-blue box */
+        color: #1e293b !important;
+        border-left: 4px solid #3b82f6 !important;
+    }
+
+    /* ===============================
+       INPUTS & TEXT AREA
+       =============================== */
+    textarea, input, select {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        border-radius: 8px !important;
+        border: 1px solid #b6d7f7 !important;
+    }
+
+    /* Focus state for inputs */
+    textarea:focus, input:focus {
+        border: 1px solid #3b82f6 !important; /* bright blue */
+        box-shadow: 0 0 4px rgba(59,130,246,0.4) !important;
+    }
+
+    /* ===============================
+       BUTTONS
+       =============================== */
+    .stButton>button {
+        background: linear-gradient(90deg, #3b82f6, #60a5fa); /* bright blue → soft blue */
+        color: white !important;
+        border-radius: 999px;
+        border: none;
+        padding: 0.45rem 1.4rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .stButton>button:hover {
+        filter: brightness(1.08);
+        cursor: pointer;
+    }
+
+    /* ===============================
+       TABS
+       =============================== */
+    button[data-baseweb="tab"] {
+        color: #475569 !important;        /* slate-blue text */
+        background-color: #eaf4fc !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        border-bottom: 3px solid #3b82f6 !important;
+        color: #0f4c81 !important;
+        font-weight: 700 !important;
+    }
+
+    /* ===============================
+       METRIC CARDS
+       =============================== */
+    [data-testid="stMetricValue"] {
+        color: #0f4c81 !important; /* navy blue */
+        font-weight: 700;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #475569 !important; /* slate blue */
+    }
+
+    /* ===============================
+       DATAFRAMES
+       =============================== */
+    [data-testid="stDataFrame"] {
+        background-color: #ffffff !important;
+        border-radius: 10px;
+        border: 1px solid #b6d7f7 !important;
+    }
+
+    /* ===============================
+       SECTIONS / HR LINES
+       =============================== */
+    hr, .stDivider {
+        border-color: #b6d7f7 !important;
+    }
+
+    /* ---------------------------------------------------
+   FIX SIDEBAR RED/ORANGE RADIO BUTTON COLORS
+   --------------------------------------------------- */
+
+    /* Radio button dot (selected) */
+    div[role="radiogroup"] > label[data-testid="stRadio-option"] > div:first-child > div {
+        border: 2px solid #3b82f6 !important; /* blue border */
+    }
+
+    div[role="radiogroup"] > label[data-testid="stRadio-option"] > div:first-child > div[style*="background"] {
+        background-color: #3b82f6 !important; /* blue filled circle */
+    }
+
+    /* Radio button text */
+    label[data-testid="stRadio-option"] > div:nth-child(2) {
+        color: #0f4c81 !important; /* navy blue text */
+        font-weight: 600 !important;
+    }
+
+    /* Hover effect override */
+    label[data-testid="stRadio-option"]:hover {
+        background-color: #d9ecfa !important; /* light blue soft highlight */
+    }
+
+    /* Remove any orange/red from focus states */
+    label[data-testid="stRadio-option"]:focus {
+        outline: none !important;
+        box-shadow: 0 0 0 2px #93c5fd !important; /* soft light-blue ring */
+    }
+
+        /* ========================================================
+       DARK MODE FIXES — OVERRIDE COLORS FOR BETTER CONTRAST
+       Applies ONLY when Streamlit's theme is set to dark.
+       ======================================================== */
+
+    @media (prefers-color-scheme: dark) {
+
+        /* App background */
+        [data-testid="stAppViewContainer"] {
+            background: #0b1221 !important;  /* deep navy */
+            color: #e2e8f0 !important;       /* light gray-blue text */
+        }
+
+        /* Sidebar background */
+        [data-testid="stSidebar"] {
+            background: #0f172a !important; /* slate navy */
+            color: #e2e8f0 !important;
+        }
+
+        /* Sidebar radio text */
+        label[data-testid="stRadio-option"] > div:nth-child(2) {
+            color: #cbd5e1 !important;  /* readable light blue-gray */
+        }
+
+        /* Headings */
+        h1, h2, h3, h4 {
+            color: #93c5fd !important;  /* soft bright blue */
+        }
+
+        /* Body text */
+        p, li, span, div, label {
+            color: #e2e8f0 !important;
+        }
+
+        /* Tabs */
+        button[data-baseweb="tab"] {
+            color: #bfdbfe !important;
+            background-color: transparent !important;
+        }
+        button[data-baseweb="tab"][aria-selected="true"] {
+            border-bottom: 3px solid #60a5fa !important;
+            color: #e0f2fe !important;
+        }
+
+        /* Inputs */
+        textarea, input, select {
+            background-color: #1e293b !important; /* dark slate */
+            color: #f1f5f9 !important;            /* light text */
+            border: 1px solid #475569 !important;
+        }
+
+        textarea:focus, input:focus {
+            border: 1px solid #60a5fa !important;
+            box-shadow: 0 0 4px rgba(96,165,250,0.5) !important;
+        }
+
+        /* Buttons */
+        .stButton>button {
+            background: linear-gradient(90deg, #2563eb, #3b82f6) !important;
+            color: white !important;
+        }
+
+        /* DataFrame */
+        [data-testid="stDataFrame"] {
+            background-color: #1e293b !important;
+            color: #e2e8f0 !important;
+            border: 1px solid #334155 !important;
+        }
+
+        /* Metrics */
+        [data-testid="stMetricValue"] {
+            color: #93c5fd !important;
+        }
+        [data-testid="stMetricLabel"] {
+            color: #bfdbfe !important;
+        }
+
+        /* Divider */
+        hr, .stDivider {
+            border-color: #334155 !important;
+        }
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ----------------- TITLE & INTRO -----------------
+st.title("ScreenSense Lab")
+
 st.write(
     """
-    This dashboard explores relationships between **social media use**, **sleep**, and
-    **mental health** in a student sample.
+    ScreenSense Lab helps you explore how **social media use**, **screen time**, and
+    **sleep** relate to student mental health.
 
     On the **Home** page, you can:
     - Ask a **Q&A bot** about social media and mental health  
     - Enter your own **screen time patterns** to get more personalized insights  
-    - Explore **pre-made visualizations** and summary statistics
+    - Explore **pre-made visualizations** and summary statistics that put your habits in context
     """
 )
 
@@ -131,11 +367,11 @@ with st.sidebar:
 
 # ----------------- HOME: BOT + PRE-MADE VISUALS -----------------
 if page == "Home":
-    tab_bot, tab_viz = st.tabs(["Q&A Assistant", "Data & Visualizations"])
+    tab_bot, tab_viz = st.tabs(["Q&A Assistant (Landing)", "Data & Visualizations"])
 
     # ---- TAB 1: BOT + MANUAL SCREEN TIME INPUT ----
     with tab_bot:
-        st.header("Mental Health & Social Media Q&A Bot")
+        st.header("Ask ScreenSense")
 
         st.markdown(
             """
@@ -146,13 +382,13 @@ if page == "Home":
             """
         )
 
-        st.markdown("#### See it in motion! Describe your typical screen time")
+        st.markdown("#### Optional: Describe your typical screen time")
 
         st.write(
             """
             You can enter your **average daily screen time** below.  
-            These numbers don’t need to be perfect — rough estimates are fine.
-            The app will summarize them and use that context to personalize the answer.
+            Rough estimates are fine — the goal is to give ScreenSense some context
+            so it can tailor its answer to your patterns.
             """
         )
 
@@ -208,8 +444,9 @@ if page == "Home":
             )
         else:
             st.info(
-                "If you enter non-zero values for screen time, I’ll use them to personalize "
-                "the answer. You can also leave them at 0 and just ask a general question."
+                "If you enter non-zero values for screen time, ScreenSense will use them "
+                "to personalize the answer. You can also leave them at 0 and ask a "
+                "general question."
             )
 
         # Store in session so it’s available when the button is clicked
@@ -252,27 +489,24 @@ if page == "Home":
         st.dataframe(df.describe().T)
 
         st.markdown("---")
-
         st.markdown(
-        """
-        ### Why The Following Visualizations Matter
+            """
+            ### Why The Following Visualizations Matter
 
-        These charts help reveal important patterns in how students use social media,
-        how much they sleep, and how these habits relate to well-being.  
-        
-        By examining trends in this dataset, you can:
-        - See **real behavior patterns** that may mirror your own digital habits  
-        - Identify **risk signals**, such as high social media use paired with short sleep  
-        - Compare your personal screen-time inputs to broader trends  
-        - Better understand how digital routines can influence **stress, mood, and overall wellness**  
+            These charts help reveal important patterns in how students use social media,
+            how much they sleep, and how these habits relate to well-being.  
 
-        These visuals provide valuable context when interpreting your own habits and
-        when asking questions in the Q&A Assistant. They are not diagnostic, but they
-        help illustrate how certain technology patterns may support—or strain—mental health.
-        """
-    )
+            By examining trends in this dataset, you can:
+            - See **real behavior patterns** that may mirror your own digital habits  
+            - Identify **risk signals**, such as high social media use paired with short sleep  
+            - Compare your personal screen-time inputs to broader trends  
+            - Better understand how digital routines can influence **stress, mood, and overall wellness**  
 
-
+            These visuals provide valuable context when interpreting your own habits and
+            when asking questions in the Q&A Assistant. They are not diagnostic, but they
+            help illustrate how certain technology patterns may support—or strain—mental health.
+            """
+        )
 
         st.markdown("---")
         st.markdown("### Visualizations and Insights")
@@ -340,7 +574,7 @@ if page == "Home":
 
             **Why it matters:**  
             Seeing these groups side by side helps illustrate that it's not just *how much*
-            you use social media, but **how it fits into your day** that matters.
+            you use social media, but **how it fits into your day** (and night) that matters.
             """,
         )
 
